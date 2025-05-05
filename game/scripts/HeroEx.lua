@@ -73,8 +73,8 @@ function HeroEx.GetHeroWeaponFull(hero)
     end
 
     if not weaponIndex then
-        DebugPrint { Text = "The player has no rarity!!!!" }
-        return
+        DebugPrint { Text = "Player has no aspect trait. Defaulting weaponIndex to 1." }
+        weaponIndex = 1 -- Default to base aspect if trait lookup fails
     end
 
     return weaponName, weaponIndex
