@@ -150,6 +150,95 @@ function LootHooks.SpawnRoomRewardHook(baseFun, ...)
     end
 
     HeroContext.RunWithHeroContext(hero, baseFun, ...)
+    
+    -- Generate a second reward for player 2 if they exist and are alive
+    LootHooks.SpawnSecondPlayerReward()
+end
+
+---@private
+function LootHooks.SpawnSecondPlayerReward()
+    local player2 = CoopPlayers.GetHero(2)
+    
+    -- Only proceed if player 2 exists and is alive
+    if not player2 or player2.IsDead then
+        return
+    end
+    
+    local currentRoom = CurrentRun.CurrentRoom
+    
+    -- Don't spawn a reward if we're in a shop or if no reward type is available
+    if currentRoom.ChosenRewardType == nil or currentRoom.ChosenRewardType == "Shop" or currentRoom.ChosenRewardType == "Story" or currentRoom.DeferReward then
+        return
+    end
+    
+    -- List of reward types that should be doubled for player 2
+    local doubledRewardTypes = {
+        "Boon",
+        "RoomRewardMaxHealthDrop",
+        "StackUpgrade", 
+        "WeaponUpgrade", 
+        "HermesUpgrade",
+        "TrialUpgrade"
+    }
+    
+    -- Check if player 1's reward should be doubled
+    local shouldDoubleReward = false
+    for _, rewardType in ipairs(doubledRewardTypes) do
+        if currentRoom.ChosenRewardType == rewardType then
+            shouldDoubleReward = true
+            break
+        end
+    end
+    
+    -- If reward type shouldn't be doubled, return without creating a reward for player 2
+    if not shouldDoubleReward then
+        DebugPrint { Text = "Player 1 got a reward type that is not doubled for Player 2: " .. currentRoom.ChosenRewardType }
+        return
+    end
+    
+    -- Use player 2's hero as the spawn point
+    local spawnPointId = player2.ObjectId
+    
+    -- Generate the same reward for player 2 (except for Boons, which get a random god)
+    local reward
+    DebugPrint { Text = "Player 1 got " .. currentRoom.ChosenRewardType .. ", giving Player 2 the same type" }
+    
+    HeroContext.RunWithHeroContext(player2, function()
+        if currentRoom.ChosenRewardType == "Boon" then
+            -- For Boons, select any random god (may potentially be the same as player 1)
+            local godOptions = {"ZeusUpgrade", "PoseidonUpgrade", "AthenaUpgrade", "AphroditeUpgrade", 
+                               "AresUpgrade", "ArtemisUpgrade", "DionysusUpgrade", "DemeterUpgrade"}
+            
+            local selectedGod = godOptions[RandomInt(1, #godOptions)]
+            reward = GiveLoot({ ForceLootName = selectedGod, SpawnPoint = spawnPointId, SuppressSpawnSounds = false })
+        elseif currentRoom.ChosenRewardType == "StackUpgrade" then
+            reward = CreateStackLoot({ SpawnPoint = spawnPointId, SuppressSpawnSounds = false })
+        elseif currentRoom.ChosenRewardType == "WeaponUpgrade" then
+            reward = CreateWeaponLoot({ SpawnPoint = spawnPointId, SuppressSpawnSounds = false })
+        elseif currentRoom.ChosenRewardType == "HermesUpgrade" then
+            reward = GiveLoot({ ForceLootName = "HermesUpgrade", SpawnPoint = spawnPointId, SuppressSpawnSounds = false })
+        elseif currentRoom.ChosenRewardType == "TrialUpgrade" then
+            reward = GiveLoot({ ForceLootName = "TrialUpgrade", SpawnPoint = spawnPointId, SuppressSpawnSounds = false })
+        elseif currentRoom.ChosenRewardType == "RoomRewardMaxHealthDrop" then
+            -- Max Health upgrade
+            local consumableId = SpawnObstacle({ Name = "RoomRewardMaxHealthDrop", DestinationId = spawnPointId, Group = "Standing" })
+            reward = CreateConsumableItem(consumableId, "RoomRewardMaxHealthDrop", 0)
+            if reward ~= nil then
+                ApplyConsumableItemResourceMultiplier(currentRoom, reward)
+                ExtractValues(CurrentRun.Hero, reward, reward)
+                ActivatedObjects[consumableId] = reward
+
+                if reward.SpawnSound ~= nil then
+                    PlaySound({ Name = reward.SpawnSound, Id = reward.ObjectId })
+                end
+            end
+        end
+        
+        -- Disable reward magnetism to prevent confusion
+        if reward and reward.ObjectId then
+            SetObstacleProperty({ Property = "MagnetismWhileBlocked", Value = 0, DestinationId = reward.ObjectId })
+        end
+    end)
 end
 
 ---@private
