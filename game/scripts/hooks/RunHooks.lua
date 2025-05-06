@@ -21,6 +21,8 @@ local Config = ModRequire "../config.lua"
 local SecondPlayerUi = ModRequire "../SecondPlayerUI.lua"
 ---@type RunEx
 local RunEx = ModRequire "../RunEx.lua"
+---@type ResurrectionSystem
+local ResurrectionSystem = ModRequire "../ResurrectionSystem.lua"
 
 ---@class RunHooks
 local RunHooks = {}
@@ -181,6 +183,14 @@ end
 
 function RunHooks.KillHeroHook(baseFun, ...)
     CurrentRun.Hero.IsDead = true
+    local deadHero = CurrentRun.Hero
+    local playerKilled = CoopPlayers.GetPlayerByHero(deadHero)
+    
+    -- Create a marker at death location for all players
+    local deathMarker = SpawnObstacle({ Name = "InvisibleTarget", DestinationId = deadHero.ObjectId })
+    deadHero.DeathMarker = deathMarker
+    DebugPrint({ Text = "Created death marker for player " .. playerKilled .. " at ID:" .. tostring(deathMarker) })
+    
     if not CoopPlayers.HasAlivePlayers() then
         -- Handle death for player 1 only
         local mainHero = CoopPlayers.GetMainHero()
@@ -202,6 +212,9 @@ function RunHooks.KillHeroHook(baseFun, ...)
     end
     -- Unstuck AI
     EnemyAiHooks.RefreshAI()
+    
+    -- Schedule player revival after the configured delay
+    ResurrectionSystem.ScheduleResurrection(deadHero, playerKilled)
 end
 
 ---@private
