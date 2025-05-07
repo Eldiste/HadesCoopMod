@@ -28,26 +28,6 @@ ResurrectionSystem.DeathPositions = {}
 -- Keep a global reference to death markers so they don't get garbage collected
 ResurrectionSystem.DeathMarkers = {}
 
--- Schedules a resurrection for a hero after they die
-function ResurrectionSystem.ScheduleResurrection(deadHero, playerKilled)
-    if not deadHero or not playerKilled then return end
-    
-    -- Store death marker for all players
-    if deadHero.DeathMarker then
-        -- Keep a global reference to the marker so it doesn't get garbage collected
-        ResurrectionSystem.DeathMarkers[playerKilled] = deadHero.DeathMarker
-        ResurrectionSystem.DeathPositions[playerKilled] = deadHero.DeathMarker
-        DebugPrint({ Text = "Stored death marker for player " .. playerKilled .. " at ID:" .. tostring(deadHero.DeathMarker) })
-    else
-        -- Fallback to using object ID if no marker (shouldn't happen)
-        ResurrectionSystem.DeathPositions[playerKilled] = deadHero.ObjectId
-        DebugPrint({ Text = "WARNING: No death marker found for player " .. playerKilled .. ", using ID:" .. tostring(deadHero.ObjectId) })
-    end
-    
-    wait(ResurrectionSystem.ResurrectionDelay)
-    ResurrectionSystem.ReviveHero(deadHero, playerKilled)
-end
-
 -- Resurrects a hero
 function ResurrectionSystem.ReviveHero(hero, playerId)
     if not hero or not playerId then return end
@@ -71,10 +51,15 @@ function ResurrectionSystem.ReviveHero(hero, playerId)
             DebugPrint({ Text = "Teleporting player " .. playerId .. " to death position ID:" .. tostring(deathPos) })
             Teleport({ Id = hero.ObjectId, DestinationId = deathPos })
             
-            -- Destroy the death marker after use
-            if deathMarker then
-                Destroy({ Id = deathMarker })
+            -- Destroy the ghost spawned at death
+            if hero.DeathGhost then
+                DebugPrint({ Text = "Destroying ghost for player " .. playerId .. " at ID:" .. tostring(hero.DeathGhost) })
+                Destroy({ Id = hero.DeathGhost })
+                hero.DeathGhost = nil
             end
+            
+            -- Destroy the death marker after use
+            Destroy({ Id = deathMarker })
         else
             -- Fallback to room spawn
             if CurrentRun.CurrentRoom and CurrentRun.CurrentRoom.HeroEndPoint then
@@ -110,6 +95,16 @@ function ResurrectionSystem.ReviveHero(hero, playerId)
         if deathPos and deathMarker then
             DebugPrint({ Text = "Teleporting player " .. playerId .. " to death position ID:" .. tostring(deathPos) })
             Teleport({ Id = hero.ObjectId, DestinationId = deathPos })
+            
+            -- Destroy the ghost spawned at death
+            if hero.DeathGhost then
+                DebugPrint({ Text = "Destroying ghost for player " .. playerId .. " at ID:" .. tostring(hero.DeathGhost) })
+                Destroy({ Id = hero.DeathGhost })
+                hero.DeathGhost = nil
+            end
+            
+            -- Destroy the death marker after use
+            Destroy({ Id = deathMarker })
         else
             -- Fallback to room spawn point
             if CurrentRun.CurrentRoom and CurrentRun.CurrentRoom.HeroEndPoint then
@@ -131,6 +126,11 @@ function ResurrectionSystem.ReviveHero(hero, playerId)
     -- Visual effect for revival
     CreateAnimation({ Name = "RadialNovaSuper", DestinationId = hero.ObjectId })
     Flash({ Id = hero.ObjectId, Speed = 2, MinFraction = 0, MaxFraction = 0.8, Color = Color.Green, Duration = 0.5 })
+
+    -- Death Defiance full effect (after resurrection is complete)
+    thread(PlayerLastStandPresentationStart, {})
+    SetAnimation({ Name = "ZagreusWrath", DestinationId = hero.ObjectId })
+    thread(PlayerLastStandPresentationEnd)
     
     -- Clean up death markers
     if ResurrectionSystem.DeathMarkers[playerId] then

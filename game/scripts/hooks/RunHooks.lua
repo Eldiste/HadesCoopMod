@@ -187,9 +187,34 @@ function RunHooks.KillHeroHook(baseFun, ...)
     local playerKilled = CoopPlayers.GetPlayerByHero(deadHero)
     
     -- Create a marker at death location for all players
-    local deathMarker = SpawnObstacle({ Name = "InvisibleTarget", DestinationId = deadHero.ObjectId })
+    local deathMarker = SpawnObstacle({ Name = "InspectPoint", DestinationId = deadHero.ObjectId })
     deadHero.DeathMarker = deathMarker
     DebugPrint({ Text = "Created death marker for player " .. playerKilled .. " at ID:" .. tostring(deathMarker) })
+
+    -- Store death marker and position for resurrection system
+    ResurrectionSystem.DeathMarkers[playerKilled] = deathMarker
+    ResurrectionSystem.DeathPositions[playerKilled] = deathMarker
+    DebugPrint({ Text = "Stored death marker for player " .. playerKilled .. " at ID:" .. tostring(deathMarker) })
+
+    -- Make the marker interactable
+    UseableOn({ Id = deathMarker })
+    SetAnimation({ Name = "GiftFoundFx", DestinationId = deathMarker }) -- Add a glowing effect
+    -- Attach a table to the marker for OnUsed logic
+    local markerTable = {
+        IsResurrectionMarker = true,
+        DeadHero = deadHero,
+        PlayerKilled = playerKilled,
+        OnUsedFunctionName = "CoopResurrectionMarkerUsed",
+        UseText = "InGameUI_Use",
+    }
+    AttachLua({ Id = deathMarker, Table = markerTable })
+    ActivatedObjects[deathMarker] = markerTable
+
+    -- Spawn a ghost at the death position
+    local ghostId = SpawnUnit({ Name = "NPC_3DGhostAlt", Group = "Standing", DestinationId = deathMarker, Angle = 15 })
+    SetAnimation({ DestinationId = ghostId, Name = "3DGhostAltIdle" }) -- Play idle animation
+    deadHero.DeathGhost = ghostId
+    DebugPrint({ Text = "Spawned ghost for player " .. playerKilled .. " at ID:" .. tostring(ghostId) })
     
     if not CoopPlayers.HasAlivePlayers() then
         -- Handle death for player 1 only
@@ -212,9 +237,6 @@ function RunHooks.KillHeroHook(baseFun, ...)
     end
     -- Unstuck AI
     EnemyAiHooks.RefreshAI()
-    
-    -- Schedule player revival after the configured delay
-    ResurrectionSystem.ScheduleResurrection(deadHero, playerKilled)
 end
 
 ---@private
@@ -309,6 +331,19 @@ function RunHooks.RestoreUnlockRoomExitsHook()
 
     SecondPlayerUi.UpdateHealthUI()
     SecondPlayerUi.RecreateLifePips()
+end
+
+function CoopResurrectionMarkerUsed(marker, args, user)
+    -- Only allow living players to use the marker
+    if not user or user.IsDead then return end
+    if not marker or not marker.IsResurrectionMarker then return end
+    local deadHero = marker.DeadHero
+    local playerKilled = marker.PlayerKilled
+    if not deadHero or not playerKilled then return end
+    -- Call the resurrection logic
+    ResurrectionSystem.ReviveHero(deadHero, playerKilled)
+    -- Remove the marker's interactability
+    UseableOff({ Id = marker.ObjectId })
 end
 
 return RunHooks
