@@ -349,6 +349,26 @@ function OpenResurrectionMenu(deadHero, playerKilled, marker, user)
                 PlayerKilled = playerKilled,
                 Marker = marker,
                 User = user,
+            },
+            {
+                ItemName = "ResurrectButton2",
+                Type = "Resurrect",
+                Title = "Resurrect Player",
+                Description = "Bring your fallen ally back to life!",
+                DeadHero = deadHero,
+                PlayerKilled = playerKilled,
+                Marker = marker,
+                User = user,
+            },
+            {
+                ItemName = "ResurrectButton3",
+                Type = "Resurrect",
+                Title = "Resurrect Player",
+                Description = "Bring your fallen ally back to life!",
+                DeadHero = deadHero,
+                PlayerKilled = playerKilled,
+                Marker = marker,
+                User = user,
             }
         },
         MenuTitle = "Revive Fallen Ally",
@@ -404,16 +424,19 @@ function OpenResurrectionChoiceMenu(lootData, user)
                 ShadowBlur = 0, ShadowColor = {0,0,0,0}, ShadowOffset={0, 3},
                 Justification = "Center" })
     end
-    -- Single resurrect button
-    local buttonY = 370
+    -- Three resurrect buttons
+    local buttonY1 = 370
+    local buttonY2 = 570
+    local buttonY3 = 770
     local buttonX = ScreenCenterX
-    components.ResurrectButton = CreateScreenComponent({ Name = "BoonSlot1", Group = "Combat_Menu", X = buttonX, Y = buttonY })
+    -- First button
+    components.ResurrectButton = CreateScreenComponent({ Name = "BoonSlot1", Group = "Combat_Menu", X = buttonX, Y = buttonY1 })
     SetAnimation({ DestinationId = components.ResurrectButton.Id, Name = lootData.Icon .. "_Large" })
     SetScale({ Id = components.ResurrectButton.Id, Fraction = 0.85 })
     components.ResurrectButton.OnPressedFunctionName = "HandleResurrectionMenuSelection"
     components.ResurrectButton.Data = lootData.UpgradeOptions[1]
     components[components.ResurrectButton.Id] = "ResurrectButton"
-    CreateTextBox({ Id = components.ResurrectButton.Id, Text = "Resurrect",
+    CreateTextBox({ Id = components.ResurrectButton.Id, Text = "Resurrect (100 Gold)",
         FontSize = 27,
         OffsetX = 0, OffsetY = -55,
         Color = Color.White,
@@ -421,7 +444,7 @@ function OpenResurrectionChoiceMenu(lootData, user)
         ShadowBlur = 0, ShadowColor = {0,0,0,1}, ShadowOffset = {0, 2},
         Justification = "Center"
     })
-    CreateTextBox({ Id = components.ResurrectButton.Id, Text = lootData.UpgradeOptions[1].Description,
+    CreateTextBox({ Id = components.ResurrectButton.Id, Text = "Pay 100 gold to bring your fallen ally back to life!",
         OffsetX = 0, OffsetY = -30,
         Width = 675,
         Justification = "Center",
@@ -431,7 +454,62 @@ function OpenResurrectionChoiceMenu(lootData, user)
         Format = "BaseFormat",
         TextSymbolScale = 0.8,
     })
-    TeleportCursor({ OffsetX = buttonX, OffsetY = buttonY, ForceUseCheck = true })
+    -- Second button
+    components.ResurrectButton2 = CreateScreenComponent({ Name = "BoonSlot1", Group = "Combat_Menu", X = buttonX, Y = buttonY2 })
+    SetAnimation({ DestinationId = components.ResurrectButton2.Id, Name = lootData.Icon .. "_Large" })
+    SetScale({ Id = components.ResurrectButton2.Id, Fraction = 0.85 })
+    components.ResurrectButton2.OnPressedFunctionName = "HandleResurrectionMenuSelection"
+    components.ResurrectButton2.Data = lootData.UpgradeOptions[2]
+    components[components.ResurrectButton2.Id] = "ResurrectButton2"
+    CreateTextBox({ Id = components.ResurrectButton2.Id, Text = "Resurrect (-30 HP)",
+        FontSize = 27,
+        OffsetX = 0, OffsetY = -55,
+        Color = Color.White,
+        Font = "AlegreyaSansSCLight",
+        ShadowBlur = 0, ShadowColor = {0,0,0,1}, ShadowOffset = {0, 2},
+        Justification = "Center"
+    })
+    CreateTextBox({ Id = components.ResurrectButton2.Id, Text = "Lose 30 HP to bring your fallen ally back to life!",
+        OffsetX = 0, OffsetY = -30,
+        Width = 675,
+        Justification = "Center",
+        VerticalJustification = "Top",
+        LineSpacingBottom = 8,
+        UseDescription = true,
+        Format = "BaseFormat",
+        TextSymbolScale = 0.8,
+    })
+    -- Third button
+    components.ResurrectButton3 = CreateScreenComponent({ Name = "BoonSlot1", Group = "Combat_Menu", X = buttonX, Y = buttonY3 })
+    SetAnimation({ DestinationId = components.ResurrectButton3.Id, Name = lootData.Icon .. "_Large" })
+    SetScale({ Id = components.ResurrectButton3.Id, Fraction = 0.85 })
+    components.ResurrectButton3.OnPressedFunctionName = "HandleResurrectionMenuSelection"
+    components.ResurrectButton3.Data = lootData.UpgradeOptions[3]
+    components[components.ResurrectButton3.Id] = "ResurrectButton3"
+    CreateTextBox({ Id = components.ResurrectButton3.Id, Text = "Resurrect (-20% Max HP for both)",
+        FontSize = 27,
+        OffsetX = 0, OffsetY = -55,
+        Color = Color.White,
+        Font = "AlegreyaSansSCLight",
+        ShadowBlur = 0, ShadowColor = {0,0,0,1}, ShadowOffset = {0, 2},
+        Justification = "Center"
+    })
+    CreateTextBox({ Id = components.ResurrectButton3.Id, Text = "Both players lose 20% of their max health to bring your fallen ally back to life!",
+        OffsetX = 0, OffsetY = -30,
+        Width = 675,
+        Justification = "Center",
+        VerticalJustification = "Top",
+        LineSpacingBottom = 8,
+        UseDescription = true,
+        Format = "BaseFormat",
+        TextSymbolScale = 0.8,
+    })
+    -- Add graphical return button (bottom center)
+    components.CloseButton = CreateScreenComponent({ Name = "ButtonClose", Group = "Combat_Menu", Scale = 0.7, X = ScreenCenterX, Y = 950 })
+    components.CloseButton.OnPressedFunctionName = "HandleResurrectionMenuReturn"
+    components.CloseButton.Data = { User = user }
+    components.CloseButton.ControlHotkey = "Cancel"
+    TeleportCursor({ OffsetX = buttonX, OffsetY = buttonY1, ForceUseCheck = true })
     screen.KeepOpen = true
     screen.User = user
     thread( HandleWASDInput, screen )
@@ -440,6 +518,66 @@ end
 
 function HandleResurrectionMenuSelection(screen, button)
     local data = button.Data
+    -- If first button, require 100 gold
+    if data.ItemName == "ResurrectButton" then
+        if not CurrentRun.Money or CurrentRun.Money < 100 then
+            -- Not enough gold, play error sound and do nothing
+            PlaySound({ Name = "/Leftovers/SFX/OutOfAmmo" })
+            return
+        else
+            -- Deduct gold
+            CurrentRun.Money = CurrentRun.Money - 100
+        end
+    end
+    -- If second button, require -30 HP from the resurrecting player
+    if data.ItemName == "ResurrectButton2" then
+        local playerIndex = (data.User and data.User.PlayerIndex) or 1
+        local resurrector = CoopPlayers.GetHero(playerIndex)
+        if not resurrector or not resurrector.Health or resurrector.Health <= 30 then
+            -- Not enough HP, play error sound and do nothing
+            PlaySound({ Name = "/Leftovers/SFX/OutOfAmmo" })
+            return
+        else
+            resurrector.Health = resurrector.Health - 30
+            -- Optionally, play a hurt animation or effect here
+            if SecondPlayerUi and SecondPlayerUi.UpdateHealthUI then
+                SecondPlayerUi.UpdateHealthUI()
+            end
+            if UIData and UIData.UpdateHealthUI then
+                UIData.UpdateHealthUI()
+            end
+        end
+    end
+    -- If third button, -20% max health for both players
+    if data.ItemName == "ResurrectButton3" then
+        local hero1 = CoopPlayers.GetHero(1)
+        local hero2 = CoopPlayers.GetHero(2)
+        local function canLose20Percent(hero)
+            if not hero or not hero.MaxHealth then return false end
+            local loss = math.floor(hero.MaxHealth * 0.2)
+            return (hero.MaxHealth - loss) >= 1
+        end
+        if not canLose20Percent(hero1) or not canLose20Percent(hero2) then
+            PlaySound({ Name = "/Leftovers/SFX/OutOfAmmo" })
+            return
+        else
+            local function applyLoss(hero)
+                local loss = math.floor(hero.MaxHealth * 0.2)
+                hero.MaxHealth = hero.MaxHealth - loss
+                if hero.Health > hero.MaxHealth then
+                    hero.Health = hero.MaxHealth
+                end
+            end
+            applyLoss(hero1)
+            applyLoss(hero2)
+            if SecondPlayerUi and SecondPlayerUi.UpdateHealthUI then
+                SecondPlayerUi.UpdateHealthUI()
+            end
+            if UIData and UIData.UpdateHealthUI then
+                UIData.UpdateHealthUI()
+            end
+        end
+    end
     -- Pass resurrection data to close
     CloseResurrectionMenu(screen, button, data.User, data)
 end
@@ -469,6 +607,10 @@ function CloseResurrectionMenu(screen, button, user, resurrectionData)
             UseableOff({ Id = resurrectionData.Marker.ObjectId })
         end
     end
+end
+
+function HandleResurrectionMenuReturn(screen, button)
+    CloseResurrectionMenu(screen, button, button.Data.User)
 end
 
 function CoopResurrectionMarkerUsed(marker, args, user)
