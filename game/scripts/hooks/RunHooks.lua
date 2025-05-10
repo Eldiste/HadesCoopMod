@@ -440,31 +440,11 @@ end
 
 function HandleResurrectionMenuSelection(screen, button)
     local data = button.Data
-    if data and data.DeadHero and data.PlayerKilled then
-        ResurrectionSystem.ReviveHero(data.DeadHero, data.PlayerKilled)
-        if data.Marker and data.Marker.ObjectId then
-            UseableOff({ Id = data.Marker.ObjectId })
-        end
-    end
-    -- Pass user to close
-    CloseResurrectionMenu(screen, button, data.User)
+    -- Pass resurrection data to close
+    CloseResurrectionMenu(screen, button, data.User, data)
 end
 
-function CoopResurrectionMarkerUsed(marker, args, user)
-    -- Only allow living players to use the marker
-    if not user or user.IsDead then return end
-    if not marker or not marker.IsResurrectionMarker then return end
-    local deadHero = marker.DeadHero
-    local playerKilled = marker.PlayerKilled
-    if not deadHero or not playerKilled then return end
-    -- Switch menu control to the interacting player
-    local playerId = CoopPlayers.GetPlayerByHero(user)
-    CoopControl.SwitchControlForMenu(playerId)
-    -- Open the resurrection menu instead of reviving immediately
-    OpenResurrectionMenu(deadHero, playerKilled, marker, user)
-end
-
-function CloseResurrectionMenu(screen, button, user)
+function CloseResurrectionMenu(screen, button, user, resurrectionData)
     if not user then
         user = screen.User -- fallback if not passed
     end
@@ -482,6 +462,27 @@ function CloseResurrectionMenu(screen, button, user)
     ScreenAnchors.ResurrectionMenu = nil
     -- Reset all players' controls after closing the menu
     CoopControl.ResetAllPlayers()
+    -- Trigger resurrection after menu is fully closed
+    if resurrectionData and resurrectionData.DeadHero and resurrectionData.PlayerKilled then
+        ResurrectionSystem.ReviveHero(resurrectionData.DeadHero, resurrectionData.PlayerKilled)
+        if resurrectionData.Marker and resurrectionData.Marker.ObjectId then
+            UseableOff({ Id = resurrectionData.Marker.ObjectId })
+        end
+    end
+end
+
+function CoopResurrectionMarkerUsed(marker, args, user)
+    -- Only allow living players to use the marker
+    if not user or user.IsDead then return end
+    if not marker or not marker.IsResurrectionMarker then return end
+    local deadHero = marker.DeadHero
+    local playerKilled = marker.PlayerKilled
+    if not deadHero or not playerKilled then return end
+    -- Switch menu control to the interacting player
+    local playerId = CoopPlayers.GetPlayerByHero(user)
+    CoopControl.SwitchControlForMenu(playerId)
+    -- Open the resurrection menu instead of reviving immediately
+    OpenResurrectionMenu(deadHero, playerKilled, marker, user)
 end
 
 return RunHooks
