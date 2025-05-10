@@ -51,7 +51,16 @@ end
 -- So the player 2 will control the menu
 ---@param playerId number
 function CoopControl.SwitchControlForMenu(playerId)
-    local controllerId = CoopControl.Schemas.Current[playerId].ControllerId
+    local schema = CoopControl.Schemas.Current[playerId]
+    if not schema then
+        -- fallback: Player 1 = Keyboard, Player 2 = Gamepad
+        if playerId == 1 then
+            schema = { Device = "Keyboard", ControllerId = -1 }
+        else
+            schema = { Device = "Gamepad", ControllerId = 0 }
+        end
+    end
+    local controllerId = schema.ControllerId
 
     CoopSetPlayerGamepad(1, controllerId)
     for playerId = 2, #CoopControl.Schemas.Current do

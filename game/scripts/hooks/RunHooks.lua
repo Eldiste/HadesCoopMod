@@ -23,6 +23,8 @@ local SecondPlayerUi = ModRequire "../SecondPlayerUI.lua"
 local RunEx = ModRequire "../RunEx.lua"
 ---@type ResurrectionSystem
 local ResurrectionSystem = ModRequire "../ResurrectionSystem.lua"
+---@type CoopControl
+local CoopControl = ModRequire "../CoopControl.lua"
 
 ---@class RunHooks
 local RunHooks = {}
@@ -333,6 +335,121 @@ function RunHooks.RestoreUnlockRoomExitsHook()
     SecondPlayerUi.RecreateLifePips()
 end
 
+function OpenResurrectionMenu(deadHero, playerKilled, marker, user)
+    -- Build a lootData-like table for the resurrection menu
+    local lootData = {
+        Name = "ResurrectionMenu",
+        UpgradeOptions = {
+            {
+                ItemName = "ResurrectButton",
+                Type = "Resurrect",
+                Title = "Resurrect Player",
+                Description = "Bring your fallen ally back to life!",
+                DeadHero = deadHero,
+                PlayerKilled = playerKilled,
+                Marker = marker,
+                User = user,
+            }
+        },
+        MenuTitle = "Revive Fallen Ally",
+        FlavorTextIds = { "Revive your teammate by channeling your will!" },
+        Icon = "BoonSymbolZeus", -- Just a placeholder icon
+        LightingColor = { 100, 255, 100, 255 },
+        LootColor = { 100, 255, 100, 255 },
+        BoonGetColor = { 100, 255, 100, 255 },
+    }
+    OpenResurrectionChoiceMenu(lootData, user)
+end
+
+function OpenResurrectionChoiceMenu(lootData, user)
+    -- Mimic OpenUpgradeChoiceMenu but for resurrection
+    OnScreenOpened({Flag = "ResurrectionMenu", PersistCombatUI = true })
+    FreezePlayerUnit("ResurrectionMenuOpen", { PlayerIndex = user.PlayerIndex, DisableTray = false })
+    SetPlayerInvulnerable("ResurrectionMenuOpen", { PlayerIndex = user.PlayerIndex })
+    SetConfigOption({ Name = "UseOcclusion", Value = false })
+    SetConfigOption({ Name = "FreeFormSelectWrapY", Value = true })
+    SetConfigOption({ Name = "ExclusiveInteractGroup", Value = nil })
+
+    ScreenAnchors.ResurrectionMenu = { Components = {} }
+    local screen = ScreenAnchors.ResurrectionMenu
+    screen.Name = "ResurrectionMenu"
+    local components = screen.Components
+
+    EnableShopGamepadCursor( screen.Name, { PlayerIndex = user.PlayerIndex })
+
+    screen.SubjectName = lootData.Name
+    components.ShopBackgroundDim = CreateScreenComponent({ Name = "rectangle01", Group = "Combat_Menu" })
+    components.ShopBackground = CreateScreenComponent({ Name = "BoonBox", Group = "Combat_Menu" })
+    SetScale({ Id = components.ShopBackgroundDim.Id, Fraction = 4 })
+    SetColor({ Id = components.ShopBackgroundDim.Id, Color = {0.15, 0.15, 0.15, 0.7} })
+    wait(0.15)
+    -- Title
+    CreateTextBox({ Id = components.ShopBackground.Id, Text = lootData.MenuTitle or "Revive Fallen Ally",
+        FontSize = 32,
+        OffsetX = 0, OffsetY = -465,
+        Color = Color.White,
+        Font = "SpectralSCLightTitling",
+        ShadowBlur = 0, ShadowColor = {0,0,0,1}, ShadowOffset={0, 3},
+        OutlineThickness = 3,
+        Justification = "Center"
+    })
+    -- Flavor Text
+    if lootData.FlavorTextIds ~= nil then
+        local flavorText = lootData.FlavorTextIds[1]
+        CreateTextBox({ Id = components.ShopBackground.Id, Text = flavorText,
+                FontSize = 16,
+                OffsetY = -410, Width = 1040,
+                Color = {0.698, 0.902, 0.514, 1.0},
+                Font = "AlegreyaSansSCRegular",
+                ShadowBlur = 0, ShadowColor = {0,0,0,0}, ShadowOffset={0, 3},
+                Justification = "Center" })
+    end
+    -- Single resurrect button
+    local buttonY = 370
+    local buttonX = ScreenCenterX
+    components.ResurrectButton = CreateScreenComponent({ Name = "BoonSlot1", Group = "Combat_Menu", X = buttonX, Y = buttonY })
+    SetAnimation({ DestinationId = components.ResurrectButton.Id, Name = lootData.Icon .. "_Large" })
+    SetScale({ Id = components.ResurrectButton.Id, Fraction = 0.85 })
+    components.ResurrectButton.OnPressedFunctionName = "HandleResurrectionMenuSelection"
+    components.ResurrectButton.Data = lootData.UpgradeOptions[1]
+    components[components.ResurrectButton.Id] = "ResurrectButton"
+    CreateTextBox({ Id = components.ResurrectButton.Id, Text = "Resurrect",
+        FontSize = 27,
+        OffsetX = 0, OffsetY = -55,
+        Color = Color.White,
+        Font = "AlegreyaSansSCLight",
+        ShadowBlur = 0, ShadowColor = {0,0,0,1}, ShadowOffset = {0, 2},
+        Justification = "Center"
+    })
+    CreateTextBox({ Id = components.ResurrectButton.Id, Text = lootData.UpgradeOptions[1].Description,
+        OffsetX = 0, OffsetY = -30,
+        Width = 675,
+        Justification = "Center",
+        VerticalJustification = "Top",
+        LineSpacingBottom = 8,
+        UseDescription = true,
+        Format = "BaseFormat",
+        TextSymbolScale = 0.8,
+    })
+    TeleportCursor({ OffsetX = buttonX, OffsetY = buttonY, ForceUseCheck = true })
+    screen.KeepOpen = true
+    screen.User = user
+    thread( HandleWASDInput, screen )
+    HandleScreenInput( screen )
+end
+
+function HandleResurrectionMenuSelection(screen, button)
+    local data = button.Data
+    if data and data.DeadHero and data.PlayerKilled then
+        ResurrectionSystem.ReviveHero(data.DeadHero, data.PlayerKilled)
+        if data.Marker and data.Marker.ObjectId then
+            UseableOff({ Id = data.Marker.ObjectId })
+        end
+    end
+    -- Pass user to close
+    CloseResurrectionMenu(screen, button, data.User)
+end
+
 function CoopResurrectionMarkerUsed(marker, args, user)
     -- Only allow living players to use the marker
     if not user or user.IsDead then return end
@@ -340,10 +457,31 @@ function CoopResurrectionMarkerUsed(marker, args, user)
     local deadHero = marker.DeadHero
     local playerKilled = marker.PlayerKilled
     if not deadHero or not playerKilled then return end
-    -- Call the resurrection logic
-    ResurrectionSystem.ReviveHero(deadHero, playerKilled)
-    -- Remove the marker's interactability
-    UseableOff({ Id = marker.ObjectId })
+    -- Switch menu control to the interacting player
+    local playerId = CoopPlayers.GetPlayerByHero(user)
+    CoopControl.SwitchControlForMenu(playerId)
+    -- Open the resurrection menu instead of reviving immediately
+    OpenResurrectionMenu(deadHero, playerKilled, marker, user)
+end
+
+function CloseResurrectionMenu(screen, button, user)
+    if not user then
+        user = screen.User -- fallback if not passed
+    end
+    DisableShopGamepadCursor( screen.Name, { PlayerIndex = user and user.PlayerIndex or 1 })
+    SetConfigOption({ Name = "FreeFormSelectWrapY", Value = false })
+    SetAnimation({ DestinationId = screen.Components.ShopBackground.Id, Name = "BoonSelectOut" })
+    UseableOff({ Id = screen.Components.ResurrectButton.Id, ForceHighlightOff = true })
+    CloseScreen( GetAllIds( screen.Components ), 0.25 )
+    PlaySound({ Name = "/SFX/Menu Sounds/GeneralWhooshMENU" })
+    UnfreezePlayerUnit("ResurrectionMenuOpen", { PlayerIndex = user and user.PlayerIndex or 1 })
+    SetPlayerVulnerable("ResurrectionMenuOpen", { PlayerIndex = user and user.PlayerIndex or 1 })
+    SetConfigOption({ Name = "UseOcclusion", Value = true })
+    screen.KeepOpen = false
+    OnScreenClosed({Flag = "ResurrectionMenu"})
+    ScreenAnchors.ResurrectionMenu = nil
+    -- Reset all players' controls after closing the menu
+    CoopControl.ResetAllPlayers()
 end
 
 return RunHooks
