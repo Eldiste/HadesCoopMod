@@ -6,12 +6,12 @@ local SecondPlayerUi = ModRequire "SecondPlayerUI.lua"
 
 local ResurrectionCosts = {}
 
-local function updateHealthUI()
+local function updateAllHealthUI()
     if SecondPlayerUi and SecondPlayerUi.UpdateHealthUI then
         SecondPlayerUi.UpdateHealthUI()
     end
-    if UIData and UIData.UpdateHealthUI then
-        UIData.UpdateHealthUI()
+    if type(UpdateHealthUI) == "function" then
+        UpdateHealthUI()
     end
 end
 
@@ -43,7 +43,7 @@ ResurrectionCosts.Options = {
             local playerIndex = (user and user.PlayerIndex) or 1
             local hero = CoopPlayers.GetHero(playerIndex)
             hero.Health = hero.Health - 30
-            updateHealthUI()
+            updateAllHealthUI()
         end,
         OnFail = function()
             PlaySound({ Name = "/Leftovers/SFX/OutOfAmmo" })
@@ -71,7 +71,7 @@ ResurrectionCosts.Options = {
             end
             applyLoss(CoopPlayers.GetHero(1))
             applyLoss(CoopPlayers.GetHero(2))
-            updateHealthUI()
+            updateAllHealthUI()
         end,
         OnFail = function()
             PlaySound({ Name = "/Leftovers/SFX/OutOfAmmo" })
